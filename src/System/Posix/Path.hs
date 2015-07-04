@@ -4,23 +4,22 @@ module System.Posix.Path
   ) where
 
 
-import System.FilePath
-import System.Directory
-import System.Process
-import Data.List
-import Data.Char
-import System.Posix.Process.Name
-import System.Posix.Terminal.Config
-import System.IO
-import Control.Monad
-import Data.Maybe
+import System.FilePath              (isValid, (</>))
+import System.Directory             (getHomeDirectory)
+import Data.List                    (break, isPrefixOf, uncons)
+import Data.Char                    (toLower)
+import System.Posix.Process.Name    (getParentProcessName)
+import System.Posix.Terminal.Config (configFiles)
+import System.IO                    (readFile, writeFile)
+import Data.Maybe                   (fromMaybe)
 
 
 addToPath :: Bool -> FilePath -> IO ()
 addToPath global path
   | isValid path = do
     name <- confFile
-    withFile name ReadWriteMode handleFile
+    alterFile name (unlines . alterFunc path . lines)
+    -- REVIEW is this warning a good idea?
     putStrLn "Please restart your Terminal in order for these changes to take effect."
   | otherwise    = error "This is not a valid filepath"
   where
@@ -32,7 +31,10 @@ addToPath global path
           terminalName <- getParentProcessName
           return $ userDir </> fromMaybe ".profile" (lookup terminalName configFiles)
     alterFunc = if global then alterEnvironFile else alterProfileFile
-    handleFile handle = hGetContents handle >>= hPutStr handle . unlines . alterFunc path . lines
+
+
+alterFile :: String -> (String -> String) -> IO ()
+alterFile name alterFunc = readFile name >>= writeFile name . alterFunc
 
 
 isPathLine :: String -> Bool
@@ -42,7 +44,7 @@ isPathLine = isPrefixOf "path=" . map toLower
 alterEnvironFile :: String -> [String] -> [String]
 alterEnvironFile pathAddition oldFile =
   fromMaybe
-    (oldFile ++ (("PATH=" ++ pathAddition):[[]]))
+    (oldFile ++ ["PATH=" ++ pathAddition, []])
     (alterMaybe
       (isPrefixOf "PATH=" . map toLower)
       (++ (':':pathAddition))
@@ -53,13 +55,12 @@ alterEnvironFile pathAddition oldFile =
 alterProfileFile :: String -> [String] -> [String]
 alterProfileFile pathAddition oldFile =
   fromMaybe
-    (oldFile ++ (("export PATH=$PATH:" ++ pathAddition):[[]]))
+    (oldFile ++ ["export PATH=$PATH:" ++ pathAddition, []])
     (alterMaybe
       (isPrefixOf "export PATH=")
       (++ (':':pathAddition))
       oldFile
     )
-
 
 
 alterMaybe :: (a -> Bool) -> (a -> a) -> [a] -> Maybe [a]

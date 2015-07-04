@@ -1,6 +1,4 @@
-module Spec
-    (
-    ) where
+module Spec where
 
 
 import Test.Hspec
@@ -30,6 +28,7 @@ pathSpec = do
       maybe False ((== "hello") . (!! 3)) (alterMaybe (== "hello") (const "goodbye") testLines) `shouldBe` True
     it "fails if the predicate matches nothing" $
       alterMaybe (== "some") (const "") testLines `shouldBe` Nothing
+
 
 main :: IO ()
 main = hspec pathSpec
