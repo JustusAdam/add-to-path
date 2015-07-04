@@ -18,6 +18,8 @@ cabal-version:       >=1.10
 library
   exposed-modules:
     System.Posix.Process.Name
+    System.Posix.Terminal.Config
+    System.Posix.Path
   -- other-modules:
   -- other-extensions:
   build-depends:
