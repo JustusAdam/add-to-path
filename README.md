@@ -1,3 +1,3 @@
-# add-to PATH
+# add to PATH
 
-A Haskell library foradding items to the user path.
+A Haskell library for adding items to the user path.
