@@ -1,5 +1,5 @@
 module System.Posix.Terminal.Config
-  (
+  ( configFiles
   ) where
 
 
