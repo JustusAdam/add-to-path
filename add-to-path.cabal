@@ -3,7 +3,7 @@
 
 name:                add-to-path
 version:             0.1.0.0
-synopsis:            Add sometthing to the users path
+synopsis:            Add something to the users path
 -- description:
 license:             BSD3
 license-file:        LICENSE

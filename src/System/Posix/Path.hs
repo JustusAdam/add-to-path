@@ -1,6 +1,16 @@
+{-|
+Module      : $Header$
+Description : Operations on a Systems PATH
+Copyright   : (c) Justus Adam, 2015
+License     : BSD3
+Maintainer  : development@justusadam.com
+Stability   : experimental
+Portability : POSIX
+
+Offers functionality for adding items to a System and User PATH.
+-}
 module System.Posix.Path
-  ( isPathLine
-  , alterMaybe
+  ( alterMaybe
   , addToLocalPath
   , addToGlobalPath
   , AddMode(..)
@@ -17,13 +27,22 @@ import System.Posix.Terminal.Config (bestGuessConfig)
 import Data.Maybe                   (fromMaybe)
 
 
+{-|
+  How to add the item to the path.
+-}
 data AddMode = Append | Prepend
 
 
+{-|
+  'FilePath' of the Systems environment declaration file.
+-}
 environFile :: FilePath
 environFile = "/etc/environment"
 
 
+{-|
+  Add an item to the PATH in current users current terminal config file.
+-}
 addToLocalPath :: AddMode -> FilePath -> IO ()
 addToLocalPath =
   __addToPath alterProfileFile $ do
@@ -32,6 +51,9 @@ addToLocalPath =
     return $ userDir </> bestGuessConfig terminalName
 
 
+{-|
+  Add an item to the global System PATH.
+-}
 addToGlobalPath :: AddMode -> FilePath -> IO ()
 addToGlobalPath = __addToPath alterEnvironFile (return environFile)
 
@@ -45,10 +67,6 @@ __addToPath func obt mode path
 
 alterFile :: (String -> String) -> FilePath -> IO ()
 alterFile alterFunc name = readFile name >>= writeFile name . alterFunc
-
-
-isPathLine :: String -> Bool
-isPathLine = isPrefixOf "path=" . map toLower
 
 
 envFilePref :: String
@@ -66,6 +84,9 @@ alterEnvironFile mode pathAddition oldFile =
     )
 
 
+{-|
+  Add an item to a 'String' matching one of the usual PATH formattings.
+-}
 addToPathLine :: String -> String -> AddMode -> String -> String
 addToPathLine prefix addition Prepend = fromMaybe addition . (((prefix ++) . (addition ++) . (':':)) <$>) . stripPrefix prefix
 addToPathLine _      addition Append  = (++ (':':addition))
@@ -86,6 +107,9 @@ alterProfileFile mode pathAddition oldFile =
     )
 
 
+{-|
+  Alter the first item in a list satisfying a predicate, returning 'Just' the new list or fail with 'Nothing'.
+-}
 alterMaybe :: (a -> Bool) -> (a -> a) -> [a] -> Maybe [a]
 alterMaybe predicate alterFunc list =
   (\(changeling, lTail) -> before ++ alterFunc changeling : lTail) <$> uncons rest

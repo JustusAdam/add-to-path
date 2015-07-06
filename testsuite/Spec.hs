@@ -8,18 +8,6 @@ import System.Posix.Path
 
 pathSpec :: Spec
 pathSpec = do
-  describe "[function] isPathLine" $ do
-    it "returns true if ⍵ starts with \"PATH=\"" $
-      isPathLine "PATH=/usr/bool" `shouldBe` True
-    it "returns true if ⍵ starts with \"path=\"" $
-      isPathLine "path=/another/path" `shouldBe` True
-    it "rejects ⍵ := {\"PATH=\" ∉ ⍵}" $
-      isPathLine "my/string" `shouldBe` False
-    it "rejects 𝜖" $
-      isPathLine "" `shouldBe` False
-    it "rejects any random string containing \"PATH=\"" $
-      isPathLine "my/PATH=/some" `shouldBe` False
-
   describe "[function] alterMaybe" $ do
     let testLines = ["", "hello", "halko", "hello"]
     it "alters a line matching the predicate" $
