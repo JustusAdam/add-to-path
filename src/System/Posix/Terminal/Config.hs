@@ -9,10 +9,9 @@ import Data.Maybe (fromMaybe)
 
 
 configFiles :: [(String, FilePath)]
-configFiles =
-  [ ("bash", ".bash_profile")
-  , ("zsh", ".zshrc")
-  ]
+configFiles = [ ("bash", ".bash_profile")
+              , ("zsh" , ".zshrc"       )
+              ]
 
 
 defaultConfigFile :: String

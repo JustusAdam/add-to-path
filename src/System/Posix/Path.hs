@@ -10,11 +10,10 @@ module System.Posix.Path
 
 import System.FilePath              (isValid, (</>))
 import System.Directory             (getHomeDirectory)
-import Data.List                    (break, isPrefixOf, uncons, stripPrefix)
+import Data.List                    (isPrefixOf, uncons, stripPrefix)
 import Data.Char                    (toLower)
 import System.Posix.Process.Name    (getParentProcessName)
 import System.Posix.Terminal.Config (bestGuessConfig)
-import System.IO                    (readFile, writeFile)
 import Data.Maybe                   (fromMaybe)
 
 
@@ -34,7 +33,7 @@ addToLocalPath =
 
 
 addToGlobalPath :: AddMode -> FilePath -> IO ()
-addToGlobalPath = __addToPath alterProfileFile (return environFile)
+addToGlobalPath = __addToPath alterEnvironFile (return environFile)
 
 
 __addToPath :: (AddMode -> String -> [String] -> [String]) -> IO FilePath -> AddMode -> FilePath -> IO ()
@@ -88,7 +87,7 @@ alterProfileFile mode pathAddition oldFile =
 
 
 alterMaybe :: (a -> Bool) -> (a -> a) -> [a] -> Maybe [a]
-alterMaybe pred alterFunc list =
+alterMaybe predicate alterFunc list =
   (\(changeling, lTail) -> before ++ alterFunc changeling : lTail) <$> uncons rest
   where
-    (before, rest) = break pred list
+    (before, rest) = break predicate list
