@@ -1,64 +1,88 @@
 module System.Posix.Path
   ( isPathLine
   , alterMaybe
+  , addToLocalPath
+  , addToGlobalPath
+  , AddMode(..)
+  , addToPathLine
   ) where
 
 
 import System.FilePath              (isValid, (</>))
 import System.Directory             (getHomeDirectory)
-import Data.List                    (break, isPrefixOf, uncons)
+import Data.List                    (break, isPrefixOf, uncons, stripPrefix)
 import Data.Char                    (toLower)
 import System.Posix.Process.Name    (getParentProcessName)
-import System.Posix.Terminal.Config (configFiles)
+import System.Posix.Terminal.Config (bestGuessConfig)
 import System.IO                    (readFile, writeFile)
 import Data.Maybe                   (fromMaybe)
 
 
-addToPath :: Bool -> FilePath -> IO ()
-addToPath global path
-  | isValid path = do
-    name <- confFile
-    alterFile name (unlines . alterFunc path . lines)
-    -- REVIEW is this warning a good idea?
-    putStrLn "Please restart your Terminal in order for these changes to take effect."
-  | otherwise    = error "This is not a valid filepath"
-  where
-    confFile =
-      if global then
-        return "/etc/environment"
-        else do
-          userDir <- getHomeDirectory
-          terminalName <- getParentProcessName
-          return $ userDir </> fromMaybe ".profile" (lookup terminalName configFiles)
-    alterFunc = if global then alterEnvironFile else alterProfileFile
+data AddMode = Append | Prepend
 
 
-alterFile :: String -> (String -> String) -> IO ()
-alterFile name alterFunc = readFile name >>= writeFile name . alterFunc
+environFile :: FilePath
+environFile = "/etc/environment"
+
+
+addToLocalPath :: AddMode -> FilePath -> IO ()
+addToLocalPath =
+  __addToPath alterProfileFile $ do
+    userDir <- getHomeDirectory
+    terminalName <- getParentProcessName
+    return $ userDir </> bestGuessConfig terminalName
+
+
+addToGlobalPath :: AddMode -> FilePath -> IO ()
+addToGlobalPath = __addToPath alterProfileFile (return environFile)
+
+
+__addToPath :: (AddMode -> String -> [String] -> [String]) -> IO FilePath -> AddMode -> FilePath -> IO ()
+__addToPath func obt mode path
+  | isValid path =
+    obt >>= alterFile (unlines . func mode path . lines)
+  | otherwise    = error "This is not a valid filepath on this system."
+
+
+alterFile :: (String -> String) -> FilePath -> IO ()
+alterFile alterFunc name = readFile name >>= writeFile name . alterFunc
 
 
 isPathLine :: String -> Bool
 isPathLine = isPrefixOf "path=" . map toLower
 
 
-alterEnvironFile :: String -> [String] -> [String]
-alterEnvironFile pathAddition oldFile =
+envFilePref :: String
+envFilePref = "PATH="
+
+
+alterEnvironFile :: AddMode -> String -> [String] -> [String]
+alterEnvironFile mode pathAddition oldFile =
   fromMaybe
-    (oldFile ++ ["PATH=" ++ pathAddition, []])
+    (oldFile ++ [envFilePref ++ pathAddition, []])
     (alterMaybe
-      (isPrefixOf "PATH=" . map toLower)
-      (++ (':':pathAddition))
+      (isPrefixOf envFilePref . map toLower)
+      (addToPathLine envFilePref pathAddition mode)
       oldFile
     )
 
 
-alterProfileFile :: String -> [String] -> [String]
-alterProfileFile pathAddition oldFile =
+addToPathLine :: String -> String -> AddMode -> String -> String
+addToPathLine prefix addition Prepend = fromMaybe addition . (((prefix ++) . (addition ++) . (':':)) <$>) . stripPrefix prefix
+addToPathLine _      addition Append  = (++ (':':addition))
+
+
+profFilePref :: String
+profFilePref = "export PATH=$PATH:"
+
+
+alterProfileFile :: AddMode -> String -> [String] -> [String]
+alterProfileFile mode pathAddition oldFile =
   fromMaybe
-    (oldFile ++ ["export PATH=$PATH:" ++ pathAddition, []])
+    (oldFile ++ [profFilePref ++ pathAddition, []])
     (alterMaybe
       (isPrefixOf "export PATH=")
-      (++ (':':pathAddition))
+      (addToPathLine profFilePref pathAddition mode)
       oldFile
     )
 
